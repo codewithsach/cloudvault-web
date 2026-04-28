@@ -4,6 +4,7 @@
 [![CodeQL](https://github.com/codewithsach/cloudvault-web/actions/workflows/codeql.yml/badge.svg?branch=dev-adrian)](https://github.com/codewithsach/cloudvault-web/actions/workflows/codeql.yml)
 ![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue)
 ![Coverage](docs/images/coverage.svg)
+[![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=Adrian609_cloudvault-web&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=Adrian609_cloudvault-web)
 
 CloudVault Web is a Flask web application for encrypted multi-user file storage. Users can register, log in, upload encrypted files, request access to files, and download approved files. Admin users can review users and approve or deny access requests.
 
