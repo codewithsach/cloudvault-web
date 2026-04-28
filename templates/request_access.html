@@ -1,16 +1,31 @@
 {% extends "base.html" %}
 
+{% block title %}Request Access | CloudVault Web{% endblock %}
+
 {% block content %}
-<h2>Request File Access</h2>
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <div class="card shadow-sm">
+            <div class="card-body p-4">
+                <h1 class="h3 mb-3">Request File Access</h1>
 
-<form method="POST">
-    <label>Select file:</label><br>
-    <select name="file_id">
-        {% for file in files %}
-        <option value="{{ file.id }}">{{ file.filename }}</option>
-        {% endfor %}
-    </select><br><br>
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="file_id" class="form-label">Select file</label>
+                        <select id="file_id" name="file_id" class="form-select" required>
+                            {% for file in files %}
+                            <option value="{{ file.id }}">{{ file.filename }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
 
-    <button type="submit">Request Access</button>
-</form>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">Request Access</button>
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Back</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

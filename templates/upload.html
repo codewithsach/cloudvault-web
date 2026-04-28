@@ -1,14 +1,88 @@
 {% extends "base.html" %}
 
+{% block title %}Upload File | CloudVault Web{% endblock %}
+
 {% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow-sm mb-3">
+            <div class="card-body p-4">
+                <div class="d-flex flex-column flex-md-row justify-content-between gap-3 mb-3">
+                    <div>
+                        <h1 class="h3 mb-1">Upload File</h1>
+                        <p class="text-muted mb-0">Choose a supported file and CloudVault will encrypt it before storage.</p>
+                    </div>
+                    <span class="badge text-bg-light align-self-start border">Max {{ max_file_size_mb }} MB</span>
+                </div>
 
-<h2>Upload File</h2>
+                <form method="POST" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="file" class="form-label">Select file</label>
+                        <input type="file" id="file" name="file" class="form-control" accept="{% for ext in allowed_extensions %}.{{ ext }}{% if not loop.last %},{% endif %}{% endfor %}" required>
+                        <div class="form-text">
+                            Allowed types: {{ allowed_extensions | join(', ') }}.
+                        </div>
+                    </div>
 
-<form method="POST" enctype="multipart/form-data">
-    <label>Select file:</label>
-    <input type="file" name="file" required>
-    <br><br>
-    <button type="submit">Upload</button>
-</form>
+                    <div id="selectedFileInfo" class="alert alert-secondary d-none" role="status"></div>
 
+                    <div class="alert alert-info mb-3" role="alert">
+                        Files must be non-empty, {{ max_file_size_mb }} MB or smaller, and one of the listed file types.
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">Upload</button>
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Back</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h2 class="h5 mb-3">Upload checks</h2>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item px-0 d-flex justify-content-between gap-3">
+                        <span>Supported extensions</span>
+                        <span class="text-muted text-end">{{ allowed_extensions | join(', ') }}</span>
+                    </li>
+                    <li class="list-group-item px-0 d-flex justify-content-between gap-3">
+                        <span>Maximum size</span>
+                        <span class="text-muted">{{ max_file_size_mb }} MB</span>
+                    </li>
+                    <li class="list-group-item px-0 d-flex justify-content-between gap-3">
+                        <span>Storage</span>
+                        <span class="text-muted">Encrypted before saving</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const fileInput = document.getElementById('file');
+    const selectedFileInfo = document.getElementById('selectedFileInfo');
+    const maxFileSize = {{ max_file_size_mb }} * 1024 * 1024;
+
+    fileInput.addEventListener('change', () => {
+        const file = fileInput.files[0];
+
+        if (!file) {
+            selectedFileInfo.classList.add('d-none');
+            selectedFileInfo.textContent = '';
+            return;
+        }
+
+        const fileSizeMb = (file.size / (1024 * 1024)).toFixed(2);
+        const sizeStatus = file.size > maxFileSize ? ' File is larger than the allowed limit.' : '';
+
+        selectedFileInfo.classList.remove('d-none', 'alert-secondary', 'alert-warning');
+        selectedFileInfo.classList.add(file.size > maxFileSize ? 'alert-warning' : 'alert-secondary');
+        selectedFileInfo.textContent = `Selected: ${file.name} (${fileSizeMb} MB).${sizeStatus}`;
+    });
+</script>
 {% endblock %}

@@ -1,0 +1,12 @@
+.brand-logo {
+    display: block;
+    height: 40px;
+    object-fit: contain;
+    width: 40px;
+}
+
+.hero-logo {
+    display: block;
+    height: auto;
+    max-width: min(100%, 520px);
+}

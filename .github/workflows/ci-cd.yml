@@ -1,0 +1,391 @@
+name: CI/CD
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - dev
+      - dev-adrian
+  pull_request:
+    branches:
+      - main
+      - master
+      - dev
+      - dev-adrian
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-cd-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  test:
+    name: Test Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - "3.11"
+          - "3.12"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Run tests
+        id: pytest
+        run: python -m pytest -q
+
+      - name: Write test summary
+        if: always()
+        run: |
+          {
+            echo "## Test Summary"
+            echo ""
+            echo "- Workflow: ${{ github.workflow }}"
+            echo "- Branch: ${{ github.ref_name }}"
+            echo "- Commit: ${{ github.sha }}"
+            echo "- Python: ${{ matrix.python-version }}"
+            echo "- Test status: ${{ steps.pytest.outcome }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  smoke_check:
+    name: Build and Smoke Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Compile Python files
+        id: compile
+        run: python -m compileall .
+
+      - name: Smoke check Flask app
+        id: smoke
+        run: |
+          python - <<'PY'
+          from app import app, db
+
+          app.config.update(
+              TESTING=True,
+              SQLALCHEMY_DATABASE_URI="sqlite:///:memory:",
+          )
+
+          required_endpoints = {
+              "home",
+              "register",
+              "login",
+              "logout",
+              "dashboard",
+              "account",
+              "upload",
+              "my_files",
+              "download_file",
+              "delete_file",
+              "request_access",
+              "approve_request",
+              "deny_request",
+              "admin",
+              "my_requests",
+              "download_request",
+          }
+
+          missing = required_endpoints - set(app.view_functions)
+          if missing:
+              raise SystemExit(f"Missing endpoints: {sorted(missing)}")
+
+          with app.app_context():
+              db.create_all()
+
+          response = app.test_client().get("/")
+          if response.status_code != 200:
+              raise SystemExit(f"Homepage smoke check failed: {response.status_code}")
+
+          print(app.url_map)
+          PY
+
+      - name: Write smoke summary
+        if: always()
+        run: |
+          {
+            echo "## Build / Smoke Summary"
+            echo ""
+            echo "- Workflow: ${{ github.workflow }}"
+            echo "- Branch: ${{ github.ref_name }}"
+            echo "- Commit: ${{ github.sha }}"
+            echo "- Python: 3.12"
+            echo "- Compile status: ${{ steps.compile.outcome }}"
+            echo "- Smoke status: ${{ steps.smoke.outcome }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  coverage:
+    name: Coverage and Test Artifacts
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs:
+      - test
+      - smoke_check
+    if: always()
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Run coverage and export JUnit
+        id: coverage
+        run: python -m pytest --cov=. --cov-report=term-missing --cov-report=xml --junitxml=test-results.xml
+
+      - name: Generate local coverage badge
+        if: always()
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+
+          badge_path = Path("coverage.svg")
+          coverage_path = Path("coverage.xml")
+
+          if coverage_path.exists():
+              root = ET.parse(coverage_path).getroot()
+              percent = round(float(root.attrib.get("line-rate", "0")) * 100)
+          else:
+              percent = 0
+
+          color = "#4c1" if percent >= 90 else "#97ca00" if percent >= 80 else "#dfb317" if percent >= 70 else "#fe7d37" if percent >= 60 else "#e05d44"
+          label = "coverage"
+          value = f"{percent}%"
+          svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="110" height="20" role="img" aria-label="{label}: {value}">
+          <linearGradient id="s" x2="0" y2="100%">
+            <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
+            <stop offset="1" stop-opacity=".1"/>
+          </linearGradient>
+          <clipPath id="r"><rect width="110" height="20" rx="3" fill="#fff"/></clipPath>
+          <g clip-path="url(#r)">
+            <rect width="65" height="20" fill="#555"/>
+            <rect x="65" width="45" height="20" fill="{color}"/>
+            <rect width="110" height="20" fill="url(#s)"/>
+          </g>
+          <g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="11">
+            <text x="32.5" y="15" fill="#010101" fill-opacity=".3">{label}</text>
+            <text x="32.5" y="14">{label}</text>
+            <text x="87.5" y="15" fill="#010101" fill-opacity=".3">{value}</text>
+            <text x="87.5" y="14">{value}</text>
+          </g>
+          </svg>
+          """
+          badge_path.write_text(svg, encoding="utf-8")
+          PY
+
+      - name: Upload coverage and test artifacts
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: coverage-and-test-results
+          path: |
+            coverage.xml
+            test-results.xml
+            coverage.svg
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Write coverage summary
+        if: always()
+        run: |
+          {
+            echo "## Coverage Summary"
+            echo ""
+            echo "- Workflow: ${{ github.workflow }}"
+            echo "- Branch: ${{ github.ref_name }}"
+            echo "- Commit: ${{ github.sha }}"
+            echo "- Python: 3.12"
+            echo "- Coverage status: ${{ steps.coverage.outcome }}"
+            echo "- Coverage report location: artifact \`coverage-and-test-results\`"
+            echo "- Artifacts uploaded: \`coverage.xml\`, \`test-results.xml\`, \`coverage.svg\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  quality_security:
+    name: Quality and Security Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Run Black
+        id: black
+        run: black --check .
+
+      - name: Run Ruff
+        id: ruff
+        run: ruff check .
+
+      - name: Generate Bandit JSON report
+        id: bandit_report
+        if: always()
+        continue-on-error: true
+        run: bandit -r . -x tests -f json -o bandit-report.json --exit-zero
+
+      - name: Enforce Bandit high-confidence high-severity gate
+        id: bandit_enforce
+        run: bandit -r . -x tests --severity-level high --confidence-level high
+
+      - name: Generate pip-audit JSON report
+        id: pip_audit_report
+        if: always()
+        continue-on-error: true
+        run: pip-audit -r requirements.txt -f json -o pip-audit-report.json || true
+
+      - name: Enforce pip-audit dependency gate
+        id: pip_audit_enforce
+        run: pip-audit -r requirements.txt
+
+      - name: Upload security reports
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: security-scan-reports
+          path: |
+            bandit-report.json
+            pip-audit-report.json
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Write quality and security summary
+        if: always()
+        run: |
+          {
+            echo "## Quality and Security Summary"
+            echo ""
+            echo "- Workflow: ${{ github.workflow }}"
+            echo "- Branch: ${{ github.ref_name }}"
+            echo "- Commit: ${{ github.sha }}"
+            echo "- Python: 3.12"
+            echo "- Black status: ${{ steps.black.outcome }}"
+            echo "- Ruff status: ${{ steps.ruff.outcome }}"
+            echo "- Bandit report generation: ${{ steps.bandit_report.outcome }}"
+            echo "- Bandit enforcement: ${{ steps.bandit_enforce.outcome }}"
+            echo "- pip-audit report generation: ${{ steps.pip_audit_report.outcome }}"
+            echo "- pip-audit enforcement: ${{ steps.pip_audit_enforce.outcome }}"
+            echo "- Security scan report names: \`bandit-report.json\`, \`pip-audit-report.json\`"
+            echo "- Security artifact location: artifact \`security-scan-reports\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  telemetry_summary:
+    name: CI/CD Telemetry Summary
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs:
+      - test
+      - smoke_check
+      - coverage
+      - quality_security
+    if: always()
+
+    steps:
+      - name: Write portfolio-ready run summary
+        run: |
+          {
+            echo "# CloudVault CI/CD Telemetry"
+            echo ""
+            echo "- Workflow name: ${{ github.workflow }}"
+            echo "- Branch name: ${{ github.ref_name }}"
+            echo "- Commit SHA: ${{ github.sha }}"
+            echo "- Python versions: 3.11, 3.12"
+            echo "- Test status: ${{ needs.test.result }}"
+            echo "- Build / smoke status: ${{ needs.smoke_check.result }}"
+            echo "- Coverage status: ${{ needs.coverage.result }}"
+            echo "- Quality/security status: ${{ needs.quality_security.result }}"
+            echo "- Coverage report location: artifact \`coverage-and-test-results\`"
+            echo "- Artifact names uploaded: \`coverage-and-test-results\`, \`security-scan-reports\`"
+            echo "- Security scan report names: \`bandit-report.json\`, \`pip-audit-report.json\`"
+            echo ""
+            echo "## How to review artifacts"
+            echo ""
+            echo "1. Open this workflow run in GitHub Actions."
+            echo "2. Scroll to the Artifacts section."
+            echo "3. Download \`coverage-and-test-results\` for \`coverage.xml\`, \`test-results.xml\`, and \`coverage.svg\`."
+            echo "4. Download \`security-scan-reports\` for Bandit and pip-audit JSON reports."
+            echo "5. Review CodeQL under Security -> Code scanning alerts -> CodeQL."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs:
+      - test
+      - smoke_check
+      - coverage
+      - quality_security
+      - telemetry_summary
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+
+    steps:
+      - name: Deployment target not configured
+        run: |
+          echo "CI passed. Add deployment steps here once a hosting target is selected."
+          echo "Examples: Render, Railway, Fly.io, Azure App Service, AWS Elastic Beanstalk, or Docker registry publish."
+

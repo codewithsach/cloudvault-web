@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block title %}Home | CloudVault Web{% endblock %}
+
+{% block content %}
+<section class="py-4 py-lg-5">
+    <div class="row align-items-center g-4">
+        <div class="col-lg-7">
+            <img src="{{ url_for('static', filename='images/cloudvault-logo-full.png') }}" alt="CloudVault Web" width="715" height="260" class="hero-logo mb-4">
+            <h1 class="display-5 fw-semibold mb-3">Secure encrypted file storage</h1>
+            <p class="lead text-muted mb-4">
+                Securely upload, encrypt, store, and request access to files through a simple role-based Flask application.
+            </p>
+            <div class="d-flex flex-column flex-sm-row gap-2">
+                <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg">Login</a>
+                <a href="{{ url_for('register') }}" class="btn btn-outline-secondary btn-lg">Create Account</a>
+            </div>
+        </div>
+        <div class="col-lg-5">
+            <div class="card shadow-sm">
+                <div class="card-body p-4">
+                    <h2 class="h4 mb-3">What you can do</h2>
+                    <div class="d-grid gap-3">
+                        <div>
+                            <h3 class="h6 mb-1">Encrypted Uploads</h3>
+                            <p class="text-muted mb-0">Files are encrypted before being stored by the application.</p>
+                        </div>
+                        <div>
+                            <h3 class="h6 mb-1">Access Requests</h3>
+                            <p class="text-muted mb-0">Users can request permission to download files they do not own.</p>
+                        </div>
+                        <div>
+                            <h3 class="h6 mb-1">Admin Review</h3>
+                            <p class="text-muted mb-0">Admins can approve or deny pending file access requests.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="row g-3 pb-4">
+    <div class="col-md-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body">
+                <h2 class="h5">Register</h2>
+                <p class="text-muted mb-0">Create a user account to upload files and manage your requests.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body">
+                <h2 class="h5">Upload</h2>
+                <p class="text-muted mb-0">Store supported files in the app with encryption enabled.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body">
+                <h2 class="h5">Review</h2>
+                <p class="text-muted mb-0">Admins manage access requests from a dedicated dashboard.</p>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

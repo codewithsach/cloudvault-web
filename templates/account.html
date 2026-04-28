@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block title %}Account | CloudVault Web{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+        <h1 class="h2 mb-1">Account</h1>
+        <p class="text-muted mb-0">Profile details and activity summary for your CloudVault account.</p>
+    </div>
+    <span class="badge text-bg-{{ 'primary' if current_user.role == 'admin' else 'secondary' }} align-self-start align-self-md-center">
+        {{ current_user.role }}
+    </span>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-5">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white">
+                <h2 class="h5 mb-0">Profile Details</h2>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Username</dt>
+                    <dd class="col-sm-8">{{ current_user.username }}</dd>
+
+                    <dt class="col-sm-4">Email</dt>
+                    <dd class="col-sm-8">{{ current_user.email }}</dd>
+
+                    <dt class="col-sm-4">Role</dt>
+                    <dd class="col-sm-8">{{ current_user.role }}</dd>
+
+                    <dt class="col-sm-4">User ID</dt>
+                    <dd class="col-sm-8 mb-0">{{ current_user.id }}</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="row g-3">
+            <div class="col-sm-6">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <div class="text-muted small">Uploaded Files</div>
+                        <div class="display-6 fw-semibold">{{ uploaded_count }}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-6">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <div class="text-muted small">Access Requests</div>
+                        <div class="display-6 fw-semibold">{{ request_count }}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-6">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <div class="text-muted small">Approved Requests</div>
+                        <div class="display-6 fw-semibold">{{ approved_count }}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-6">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body">
+                        <div class="text-muted small">Pending Requests</div>
+                        <div class="display-6 fw-semibold">{{ pending_count }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm mt-4">
+    <div class="card-body">
+        <h2 class="h5 mb-3">Quick Actions</h2>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{{ url_for('upload') }}" class="btn btn-primary">Upload File</a>
+            <a href="{{ url_for('my_files') }}" class="btn btn-outline-primary">View My Files</a>
+            <a href="{{ url_for('my_requests') }}" class="btn btn-outline-secondary">View Requests</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

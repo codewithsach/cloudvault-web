@@ -1,24 +1,58 @@
 # Setup Instructions
 
-1. Clone repository:
-   git clone https://github.com/codewithsach/cloudvault-web.git
+## 1. Clone the repository
 
-2. Go to project folder:
-   cd cloudvault-web
+```powershell
+git clone https://github.com/codewithsach/cloudvault-web.git
+cd cloudvault-web
+```
 
-3. Create virtual environment:
-   python3 -m venv venv
-   source venv/bin/activate
+## 2. Create a virtual environment
 
-4. Install dependencies:
-   pip install -r requirements.txt
+Windows PowerShell:
 
-5. Run application:
-   python app.py
+```powershell
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+```
 
-6. Open browser:
-   http://127.0.0.1:5000
+macOS/Linux:
 
-Admin login:
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
+## 3. Install dependencies
+
+```powershell
+python -m pip install -r requirements.txt
+```
+
+## 4. Run the application
+
+```powershell
+python app.py
+```
+
+Open:
+
+```text
+http://127.0.0.1:5000
+```
+
+## 5. Default admin login
+
+```text
 username: admin
 password: admin123
+```
+
+## Optional environment variables
+
+```powershell
+$env:SECRET_KEY="replace-with-a-long-random-secret"
+$env:FLASK_DEBUG="1"
+```
+
+`FLASK_DEBUG=1` enables debug mode. Leave it unset for normal local runs.
